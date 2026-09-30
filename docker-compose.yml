@@ -1,0 +1,22 @@
+# identifiants dans .env obviously
+
+services:
+  minio:
+    image: minio/minio:latest   # à épingler sur une version précise avant tout usage réel
+    command: server /data --console-address ":9001"
+    environment:
+      # pipeline utilise compte admin MinIO (parce que plus EZ)
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?définir S3_ACCESS_KEY dans .env}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?définir S3_SECRET_KEY dans .env}
+    volumes:
+      - miniodata:/data         # les données survivent à l'arrêt du conteneur
+    ports:
+      - "127.0.0.1:9000:9000"   # API S3, accessible uniquement depuis ta machine
+      - "127.0.0.1:9001:9001"   # console web: http://localhost:9001
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 3s
+      retries: 20
+
+volumes:
+  miniodata:
