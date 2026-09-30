@@ -58,7 +58,7 @@ scripts/
   compare_results.py    comparaison version locale / version distribuée
 sql/schema.sql   tables daily_counts et tasks
 local_pipeline.py      version « avant »
-demo.sh / DEMO.md      démo guidée et scénario
+demo.sh                démo guidée (voir « Démo guidée » plus bas)
 ```
 
 ## Lancer
@@ -67,9 +67,10 @@ demo.sh / DEMO.md      démo guidée et scénario
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env                                  # puis changer les mots de passe
+                                                      # (sans caractères spéciaux : ils vont dans une URL)
 
 python scripts/generate_posts.py                      # données factices
-python local_pipeline.py                              # version locale
+python local_pipeline.py                              # version locale → output/daily_counts.csv
 
 docker compose up -d --build                          # MinIO, PostgreSQL, 1 worker
 docker compose run --rm cli python -m pipeline.seed
@@ -81,16 +82,36 @@ set -a && . ./.env && set +a
 python scripts/compare_results.py                     # RÉSULTAT : IDENTIQUE
 ```
 
-Démo guidée : `./demo.sh` (voir `DEMO.md`).
+## Démo guidée
+
+```bash
+source .venv/bin/activate          # compare_results.py tourne sur ta machine
+python scripts/generate_posts.py   # si data/raw est vide
+python local_pipeline.py           # le CSV de référence pour la comparaison
+./demo.sh                          # Entrée entre chaque étape
+```
+
+La démo repart de zéro (`docker compose down -v` : base et stockage effacés), puis
+montre dans l'ordre : 1 worker, le passage à 4 workers, un worker tué en pleine tâche,
+la reprise de sa tâche par un autre, la comparaison avec la version locale et le rejeu
+complet (idempotence). Chaque tâche est ralentie de 5 s pour avoir le temps de voir ;
+`WORK_S=2 ./demo.sh` pour aller plus vite.
+
+MinIO ne publie plus d'image Docker : `docker-compose.yml` utilise `pgsty/minio`, un
+fork communautaire compatible, épinglé sur une version précise.
 
 ## Tests
 
 ```bash
-set -a && . ./.env && set +a      # pour les tests d'intégration (PostgreSQL démarré)
-python -m pytest
+python -m pytest                  # tests unitaires seulement
+
+set -a && . ./.env && set +a      # tests d'intégration (PostgreSQL démarré)
+TEST_DATABASE_URL=$DATABASE_URL python -m pytest
 ```
 
 Sans `TEST_DATABASE_URL`, les tests qui ont besoin de PostgreSQL sont ignorés.
+**Attention** : ces tests suppriment et recréent les tables `tasks` et `daily_counts`.
+Les lancer sur la base de la démo efface ses résultats (relancer `./demo.sh` ensuite).
 
 ## Limites connues
 

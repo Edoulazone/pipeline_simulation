@@ -61,7 +61,9 @@ run "$CLI.status | tail -2"
 say "Qui a finalement traité la tâche du worker tué :"
 TASK=$(docker compose logs --no-log-prefix worker 2>/dev/null | grep "\"$VICTIM_ID\"" \
        | grep tache_prise | tail -1 | grep -oE '"platform": "[^"]+", "day": "[^"]+"')
-run "docker compose logs --no-log-prefix worker | grep '$TASK' | grep -E 'tache_(prise|terminee)' | cut -c1-150"
+# « logs » regroupe les lignes par conteneur : sort les remet dans l'ordre chronologique
+# (chaque ligne commence par {"ts": "<date ISO>", donc l'ordre alphabétique = l'ordre du temps)
+run "docker compose logs --no-log-prefix worker | grep '$TASK' | grep -E 'tache_(prise|terminee)' | sort | cut -c1-150"
 pause
 
 step "5. La preuve : même résultat que la version locale, sans doublon"

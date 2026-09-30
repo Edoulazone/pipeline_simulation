@@ -42,6 +42,7 @@ def main() -> None:
 		all_rows.extend(rows)
 
 	# PROBLÈME 7: écriture non atomique => crash pendant l'écriture laisse un CSV non fini avec ancien résultat déjà écrasé
+	OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 	with OUTPUT_FILE.open("w", newline="", encoding="utf-8") as f:
 		writer = csv.DictWriter(f, fieldnames=[fl.name for fl in fields(transform.DailyCount)])
 		writer.writeheader()

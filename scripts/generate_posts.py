@@ -32,9 +32,9 @@ def make_post(rng: random.Random, platform: str, day: date, n:int) -> dict:
 	Une publication valide créée à un instant aléatoire de la journée.
 	"""
 	created = datetime(day.year, day.month, day.day, tzinfo=timezone.utc) + timedelta(
-		seconds=rng.randrandrange(86_400))
+		seconds=rng.randrange(86_400))
 	text = rng.choice(TEMPLATES).format(
-		tag=rng.choices(HASHTAGS),
+		tag=rng.choice(HASHTAGS),
 		url=f"https://{rng.choice(DOMAINS)}/article/{rng.randrange(10_000)}",
 		mention=f"@compte_{rng.randrange(500)}",
 	)
@@ -55,34 +55,34 @@ def generate_file(platform: str, day: date, count: int) -> list[str]:
 			# 20% de repartages (valeur choisie arbitrairement), même texte qu'une publication antérieure
 			original = rng.choice(posts)
 			post = make_post(rng, platform, day, n)
-			original_at = datetime.fromisoformat(original["created_at"].replace("Z", "+00.00"))
+			original_at = datetime.fromisoformat(original["created_at"].replace("Z", "+00:00"))
 			end_of_day = datetime(day.year, day.month, day.day, 23, 59, 59, tzinfo=timezone.utc)
 			repost_at = min(original_at + timedelta(seconds=rng.randrange(1, 3600)), end_of_day)
-			post.update(text=original["text"], repost_of=original["post_id"], created_at=repost_at.isoformat().replace("+00.00", "Z"))
+			post.update(text=original["text"], repost_of=original["post_id"], created_at=repost_at.isoformat().replace("+00:00", "Z"))
 
 		else:
 			post = make_post(rng, platform, day, n)
 
 		posts.append(post)
 
-		lines = []
-		for post in posts:
-			roll = rng.random()
-			if roll < 0.01:
-				lines.append('{"post_id": "tronque", "text": "ligne coup') # JSON invalide
-				continue
-			if roll < 0.02:
-				del post["author"] # champ manquant
-			elif roll < 0.03:
-				post["text"] = "  " # texte vide
-			elif roll < 0.04:
-				post["created_at"] = "14/09/2026 08h32" # date illisible
+	lines = []
+	for post in posts:
+		roll = rng.random()
+		if roll < 0.01:
+			lines.append('{"post_id": "tronque", "text": "ligne coup') # JSON invalide
+			continue
+		if roll < 0.02:
+			del post["author"] # champ manquant
+		elif roll < 0.03:
+			post["text"] = "  " # texte vide
+		elif roll < 0.04:
+			post["created_at"] = "14/09/2026 08h32" # date illisible
 
-			line = json.dumps(post, ensure_ascii=False)
-			lines.append(line)
-			if rng.random() < 0.01:
-				lines.append(line) # créer un doublon exact
-			return lines
+		line = json.dumps(post, ensure_ascii=False)
+		lines.append(line)
+		if rng.random() < 0.01:
+			lines.append(line) # créer un doublon exact
+	return lines
 
 def main() -> None:
 	parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])

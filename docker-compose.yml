@@ -24,7 +24,8 @@ x-wait-for-infra: &wait-for-infra
 
 services:
   minio:
-    image: minio/minio:latest   # à épingler sur une version précise avant tout usage réel
+    # minio/minio n'est plus publié sur Docker Hub : fork communautaire compatible
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     command: server /data --console-address ":9001"
     environment:
       # Simplification de démo: le pipeline utilise le compte administrateur de MinIO

@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     last_error    TEXT,
     worker_id     TEXT,
     stats         JSONB,
-    ...
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (platform, day)
 );
 
