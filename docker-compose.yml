@@ -1,22 +1,89 @@
-# identifiants dans .env obviously
+#   docker compose up -d --build              tout démarrer (1 worker)
+#   docker compose up -d --scale worker=4     passer à 4 workers
+#   docker compose ps                         état des conteneurs
+#   docker compose logs -f worker             suivre les logs des workers
+#   docker compose run --rm cli python -m pipeline.seed     déposer les fichiers
+#   docker compose run --rm cli python -m pipeline.submit   créer les tâches
+#   docker compose run --rm cli python -m pipeline.status   voir l'état des tâches
+#   docker compose down                       tout arrêter (données conservées)
+#   docker compose down -v                    tout arrêter ET effacer les données
+
+# Configuration commune aux workers et aux commandes
+# Attention: dans le réseau Docker, on joint les autres services par leur NOM (postgres, minio)
+# localhost désignerait le conteneur lui-même
+x-pipeline-env: &pipeline-env
+  DATABASE_URL: postgresql://pipeline:${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}@postgres:5432/pipeline
+  S3_ENDPOINT: http://minio:9000
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?définir S3_ACCESS_KEY dans .env}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?définir S3_SECRET_KEY dans .env}
+  SIMULATED_WORK_S: ${SIMULATED_WORK_S:-0}
+
+x-wait-for-infra: &wait-for-infra
+  postgres: { condition: service_healthy }
+  minio: { condition: service_healthy }
 
 services:
   minio:
     image: minio/minio:latest   # à épingler sur une version précise avant tout usage réel
     command: server /data --console-address ":9001"
     environment:
-      # pipeline utilise compte admin MinIO (parce que plus EZ)
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?définir S3_ACCESS_KEY dans .env}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?définir S3_SECRET_KEY dans .env}
+      # Simplification de démo: le pipeline utilise le compte administrateur de MinIO
+      # En production, on créerait un compte dédié, limité à son bucket
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
     volumes:
-      - miniodata:/data         # les données survivent à l'arrêt du conteneur
+      - miniodata:/data
     ports:
       - "127.0.0.1:9000:9000"   # API S3, accessible uniquement depuis ta machine
-      - "127.0.0.1:9001:9001"   # console web: http://localhost:9001
+      - "127.0.0.1:9001:9001"   # console web : http://localhost:9001
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 3s
       retries: 20
 
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pipeline
+      POSTGRES_USER: pipeline
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Exécuté UNIQUEMENT au premier démarrage, quand le volume est vide
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline -d pipeline"]
+      interval: 3s
+      retries: 20
+
+  # Les workers: identiques, sans état, multipliables avec --scale
+  # Ils n'ont AUCUN accès aux fichiers de ta machine: ils ne lisent que dans le stockage objet
+  # Preuve qu'ils ne dépendent plus du disque local
+  worker:
+    build: .
+    image: posts-pipeline:latest
+    environment: *pipeline-env
+    depends_on: *wait-for-infra
+    restart: unless-stopped     # relancé automatiquement s'il plante
+    stop_grace_period: 30s      # temps laissé pour finir la tâche en cours après « stop »
+    deploy:
+      resources:
+        limits:
+          memory: 512m          # un worker ne peut pas affamer toute la machine
+          cpus: "1"
+
+  # Les commandes ponctuelles (seed, submit, status). Même image que les workers
+  # Le profil « tools » empêche ce service de démarrer avec « docker compose up »
+  cli:
+    image: posts-pipeline:latest
+    profiles: ["tools"]
+    environment: *pipeline-env
+    depends_on: *wait-for-infra
+    volumes:
+      - ./data:/app/data:ro     # seul ce service voit les fichiers locaux, en lecture seule
+
 volumes:
   miniodata:
+  pgdata:
