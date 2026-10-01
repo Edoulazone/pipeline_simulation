@@ -21,7 +21,7 @@ wait_all_done() {
   echo "Toutes les tâches ne sont pas terminées : voir « $CLI.status »"; return 1
 }
 
-# Charge le .env pour les commandes lancées depuis ta machine (comparaison)
+# Charge le .env pour les commandes lancées depuis ta machine
 set -a; . ./.env; set +a
 
 step "0. Point de départ : base vide, fichiers bruts déjà dans le stockage objet"
