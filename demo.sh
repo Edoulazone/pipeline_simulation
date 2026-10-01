@@ -12,10 +12,10 @@ say()   { printf '\033[0;90m# %s\033[0m\n' "$1"; }
 pause() { read -rp $'\n[Entrée pour continuer] ' _; }
 run()   { printf '\033[1;33m$ %s\033[0m\n' "$*"; eval "$@"; }
 
-# Attend que les 21 tâches soient terminées, 3 minutes au plus
+# Attend que toutes les tâches soient terminées, 3 minutes au plus
 wait_all_done() {
   for _ in $(seq 90); do
-    $CLI.status 2>/dev/null | grep -qE '^21 tâches : 21 done' && return 0
+    $CLI.status 2>/dev/null | grep -qE "^${TOTAL_TASKS} tâches : ${TOTAL_TASKS} done" && return 0
     sleep 2
   done
   echo "Toutes les tâches ne sont pas terminées : voir « $CLI.status »"; return 1
@@ -28,7 +28,11 @@ step "0. Point de départ : base vide, fichiers bruts déjà dans le stockage ob
 run "docker compose down -v --remove-orphans >/dev/null 2>&1 || true"
 run "docker compose build -q"
 run "SIMULATED_WORK_S=$WORK_S docker compose up -d --scale worker=0 >/dev/null"
-run "$CLI.seed | tail -1"
+printf '\033[1;33m$ %s\033[0m\n' "$CLI.seed | tail -1"
+SEED_LAST=$($CLI.seed | tail -1)
+echo "$SEED_LAST"
+TOTAL_TASKS=$(echo "$SEED_LAST" | grep -oE '^[0-9]+')
+say "$TOTAL_TASKS tâches à traiter dans cette démo."
 pause
 
 step "1. Un seul worker"
@@ -67,13 +71,13 @@ run "docker compose logs --no-log-prefix worker | grep '$TASK' | grep -E 'tache_
 pause
 
 step "5. La preuve : même résultat que la version locale, sans doublon"
-run "python scripts/compare_results.py"
+run "docker compose run --rm cli python scripts/compare_results.py"
 pause
 
 step "6. Bonus : tout rejouer ne change rien (idempotence)"
 run "$CLI.submit --rerun"
 wait_all_done
-run "python scripts/compare_results.py | tail -1"
+run "docker compose run --rm cli python scripts/compare_results.py | tail -1"
 
 step "Fin de la démo"
 say "Pour tout arrêter : docker compose down"

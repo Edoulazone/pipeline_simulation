@@ -22,7 +22,7 @@ def main(data_dir: Path = Path("data/raw")) -> None:
 
 	files = sorted(data_dir.glob("*/*.jsonl"))
 	if not files:
-		raise SystemExit(f"aucun fichier dans {data_dir} : lancer d'abord scripts/generate_posts.py")
+		raise SystemExit(f"aucun fichier dans {data_dir} : lance d'abord scripts/generate_posts.py")
 
 	for path in files:
 		key = storage.raw_key(platform=path.parent.name, day=date.fromisoformat(path.stem))

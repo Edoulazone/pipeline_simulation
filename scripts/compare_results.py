@@ -1,8 +1,8 @@
 """
 Compare le résultat de la version locale avec celui de la version distribuée
 
-Usage (depuis ta machine, après avoir chargé le .env):
-	python scripts/compare_results.py [output/daily_counts.csv]
+Usage (via le service cli de docker compose) :
+	docker compose run --rm cli python scripts/compare_results.py [output/daily_counts.csv]
 Code de sortie: 0 si identique, 1 sinon (utilisable dans un script ou une CI)
 """
 from __future__ import annotations
@@ -39,7 +39,7 @@ def main() -> int:
 		print("DATABASE_URL non défini : charger le .env d'abord")
 		return 2
 	if not csv_path.exists():
-		print(f"{csv_path} introuvable : lancer d'abord python local_pipeline.py")
+		print(f"{csv_path} introuvable : lance d'abord python local_pipeline.py")
 		return 2
 
 	local = load_local(csv_path)

@@ -53,7 +53,7 @@ services:
       # Exécuté UNIQUEMENT au premier démarrage, quand le volume est vide
       - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pipeline -d pipeline"]
       interval: 3s
@@ -84,6 +84,8 @@ services:
     depends_on: *wait-for-infra
     volumes:
       - ./data:/app/data:ro     # seul ce service voit les fichiers locaux, en lecture seule
+      - ./scripts:/app/scripts:ro   # scripts auxiliaires (compare_results, etc.) hors image
+      - ./output:/app/output:ro     # CSV de la version locale, pour la comparaison
 
 volumes:
   miniodata:

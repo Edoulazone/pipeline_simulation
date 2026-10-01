@@ -78,14 +78,13 @@ docker compose run --rm cli python -m pipeline.submit
 docker compose up -d --scale worker=4
 docker compose run --rm cli python -m pipeline.status
 
-set -a && . ./.env && set +a
-python scripts/compare_results.py                     # RÉSULTAT : IDENTIQUE
+docker compose run --rm cli python scripts/compare_results.py   # RÉSULTAT : IDENTIQUE
 ```
 
 ## Démo guidée
 
 ```bash
-source .venv/bin/activate          # compare_results.py tourne sur ta machine
+source .venv/bin/activate          # pour local_pipeline.py et generate_posts.py
 python scripts/generate_posts.py   # si data/raw est vide
 python local_pipeline.py           # le CSV de référence pour la comparaison
 ./demo.sh                          # Entrée entre chaque étape
